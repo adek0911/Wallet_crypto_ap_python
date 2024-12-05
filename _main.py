@@ -502,7 +502,7 @@ def chart_area_ingredients(charts_area: AreaFrame, variable_json_File: dict) -> 
         name="available_crypto",
     )
     chart_area_result(
-        charts_area, variable_json_File["variable_json"]["URL_Credentials"]
+        charts_area, variable_json_File.file_dict["variable_json"]["URL_Credentials"]
     )
 
 
