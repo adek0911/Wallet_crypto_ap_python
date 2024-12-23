@@ -267,9 +267,12 @@ def prep_data_from_db(url: str, session_user: dict):
             datetime.strptime(val["date_purchase"], "%Y-%m-%d").strftime("%d.%m.%Y")
         )
         temp.append(val["name_currency"])
-        temp.append(
-            val["status_of_purchase"].replace("}", "").replace("{", "").replace("'", "")
-        )
+
+        replace_taple = ("}", "{", "'")
+        for i in replace_taple:
+            val["status_of_purchase"] = val["status_of_purchase"].replace(i, "")
+
+        temp.append(val["status_of_purchase"])
         temp.append(f"{val['price_PLN']}")
         temp.append(f"{val['price_dollar']}")
         temp.append(f"{val['quantity']}")
@@ -289,6 +292,78 @@ def save_in_file(path: str, detail_wallet: list):
             prep_data.append(",".join(val) + "\n")
     with open(path, "w", encoding="UTF-8") as file:
         file.writelines(prep_data)
+
+
+def update_window(
+    button_status: ttk.Button,
+    changed_rows: list,
+    root_x_y: list,
+    treeview: ttk.Treeview,
+    session_user: dict,
+    url: str,
+):
+
+    button_status.configure(state="disable")
+    update_window = TopFrame()
+    upgrade_area = AreaFrame(onFrame=update_window.frame)
+    row_number = len(changed_rows)
+
+    upgrade_area.text_display(
+        text=f"Znaleziono {row_number} zmian(y)", row=0, column=0, columnspan=2
+    )
+
+    added, changed, deleted = 0, 0, 0
+    for val in changed_rows:
+        if tuple(val.keys())[0] == "CHANGED":
+            changed += 1
+        if tuple(val.keys())[0] == "ADD":
+            added += 1
+        if tuple(val.keys())[0] == "DELETED":
+            deleted += 1
+
+    upgrade_area.text_display(text=f"Dodano: {added}", row=1, column=0, columnspan=2)
+
+    upgrade_area.text_display(
+        text=f"Usunięto: {changed}", row=2, column=0, columnspan=2
+    )
+
+    upgrade_area.text_display(
+        text=f"Zmieniono: {deleted}", row=3, column=0, columnspan=2
+    )
+
+    upgrade_area.button_display(
+        text="Potwierdź", command=lambda: submit(), row=4, column=0, padx=10, pady=10
+    )
+
+    upgrade_area.button_display(
+        text="Anuluj", command=lambda: cancel(), row=4, column=1, padx=10
+    )
+
+    update_window.frame.update_idletasks()
+    x = (root_x_y[0] // 2) - (upgrade_area.frame.winfo_width() // 2)
+    y = (root_x_y[1] // 2) - (upgrade_area.frame.winfo_height() // 2)
+    update_window.frame.geometry(f"+{x}+{y}")
+
+    def submit():
+        upgrade_area.frame.focus()
+        button_status.configure(state="active")
+
+        upgrade_area.objList[1].destroy()
+        upgrade_area.objList[2].destroy()
+        upgrade_area.objList[3].destroy()
+
+        upgrade_area.statusbar_display(
+            row=1, column=0, columnspan=2, maximum=row_number
+        )
+
+        # Zrobić całą opcję logiki dodawania zmian do bazy
+
+        if msgbox.showinfo("Informacja", "Udało się przesłać dane do bazy"):
+            update_window.frame.destroy()
+
+    def cancel():
+        button_status.configure(state="active")
+        update_window.frame.destroy()
 
 
 # region buttons methods
@@ -316,9 +391,10 @@ def button_update_wallet(
                 "price_dollar": val[4],
                 "quantity": val[5],
             }
-            responce = requests.put(
-                f"{url}{directory}/{wallet_id}", json=prep_data, headers=headers
-            )
+            # responce = requests.put(
+            #     f"{url}{directory}/{wallet_id}", json=prep_data, headers=headers
+            # )
+
         if directory == "wallet_detail":
             prep_data = {
                 "Name": val[0],
@@ -326,9 +402,9 @@ def button_update_wallet(
                 "Price_USD": val[2],
                 "Quantity": val[3],
             }
-            responce = requests.put(
-                f"{url}{directory}/{wallet_id}", json=prep_data, headers=headers
-            )
+            # responce = requests.put(
+            #     f"{url}{directory}/{wallet_id}", json=prep_data, headers=headers
+            # )
 
     def update_db(val: list, id: int, directory: str):
         if directory == "trans_curr":
@@ -342,10 +418,10 @@ def button_update_wallet(
                 "price_dollar": val[4],
                 "quantity": val[5],
             }
-            responce = requests.patch(
-                f"{url}{directory}/{id}", json=prep_data, headers=headers
-            )
-            print(responce.status_code)
+            # responce = requests.patch(
+            #     f"{url}{directory}/{id}", json=prep_data, headers=headers
+            # )
+            print("update")
         if directory == "wallet_detail":
             prep_data = {
                 "Name": val[0],
@@ -353,14 +429,14 @@ def button_update_wallet(
                 "Price_USD": val[2],
                 "Quantity": val[3],
             }
-            responce = requests.patch(
-                f"{url}{directory}/{id}", json=prep_data, headers=headers
-            )
-            print(responce.status_code)
+            # responce = requests.patch(
+            #     f"{url}{directory}/{id}", json=prep_data, headers=headers
+            # )
+            print("update")
 
     def delete_db(id: int):
-        responce = requests.delete(f"{url}trans_curr/{id}", headers=headers)
-        print(responce.text)
+        # responce = requests.delete(f"{url}trans_curr/{id}", headers=headers)
+        print("delete")
 
     def wallet_values() -> list[str]:
         # TODO static value
@@ -374,7 +450,7 @@ def button_update_wallet(
             ]
             return result
         # ERROR 500
-        print(responce.status_code)
+
         raise ConnectionError
 
     if msgbox.askokcancel("Warning", "Czy na pewno chcesz przesłać zmiany do bazy?"):
@@ -383,25 +459,30 @@ def button_update_wallet(
         if len(changed_data) > 0:
             status = False
             for val in changed_data:
+
                 """ADD"""
                 if val["old"] == "":
                     add_db(val["new"], directory="trans_curr")
                     status = True
+
                 """DELETE"""
                 if val["new"] == "":
                     id = [value[6] for value in db_data if value[:6] == val["old"]]
                     delete_db(id=id[0]["Id"])
+
             """If update new added row"""
             if status:
                 db_data = prep_data_from_db(url, session_user)
 
             for val in changed_data:
+
                 """Update"""
                 if val["old"] != "" and val["new"] != "":
                     id = [value[6] for value in db_data if value[:6] == val["old"]]
                     print(id)
                     update_db(val["new"], id=id[0]["Id"], directory="trans_curr")
         changed_data = []
+
         """Recount wallet"""
         new_wallet_data = cal_unit_prices(
             history_trans_data=treeview_values(treeview_obj=treeview),
@@ -450,7 +531,7 @@ def button_change(
     else:
         change_data.insert(2, combo_entry.get())
         changed_values.append(
-            {"old": treeview.item(treeview.selection())["values"], "new": change_data}
+            {"CHANGED": (treeview.item(treeview.selection())["values"], change_data)}
         )
         treeview.item(treeview.selection(), values=change_data)
         """Clear entry"""
@@ -484,7 +565,7 @@ def button_add(
     if add_data[4] in exeptions:  # USD price
         add_data[4] = str(convert_price(add_data[3], add_data[4], dollar_price)["USD"])
 
-    changed_values.append({"old": "", "new": add_data})
+    changed_values.append({"ADD": add_data})
     treeview.insert("", "end", values=add_data)
 
     """Clear entry"""
@@ -495,7 +576,7 @@ def button_delete(treeview: ttk.Treeview, frame: ttk.Frame, changed_values: list
     if msgbox.askokcancel("Warning", "Czy na pewno chcesz usunąć zaznaczony wiersz?"):
         frame.focus()
         changed_values.append(
-            {"old": treeview.item(treeview.selection())["values"], "new": ""}
+            {"DELETED": treeview.item(treeview.selection())["values"]}
         )
         treeview.delete(treeview.selection())
     frame.focus()
@@ -518,7 +599,11 @@ def button_selected(
 
 
 def purchers_area_ingredients(
-    button_obj: ttk.Button, url: str, session_user: dict, header: str
+    button_obj: ttk.Button,
+    url: str,
+    session_user: dict,
+    header: str,
+    root_x_y: list[float],
 ) -> None:
 
     try:
@@ -581,16 +666,23 @@ def purchers_area_ingredients(
         )
 
         """Button update wallet method"""
+        # purchase_details_area.objList[14].configure(
+        #     command=lambda: button_update_wallet(
+        #         changed_data=changed_rows,
+        #         db_data=purchase_details_from_db_core,
+        #         url=url,
+        #         frame=purchase_details_window.frame,
+        #         # selected_wallet_id=session_user["selected_wallet_id"],  #
+        #         session_user=session_user,
+        #         treeview=purchase_details_area.objList[3],
+        #         header=header,
+        #     )
+        # )
         purchase_details_area.objList[14].configure(
-            command=lambda: button_update_wallet(
-                changed_data=changed_rows,
-                db_data=purchase_details_from_db_core,
-                url=url,
-                frame=purchase_details_window.frame,
-                # selected_wallet_id=session_user["selected_wallet_id"],  #
-                session_user=session_user,
-                treeview=purchase_details_area.objList[3],
-                header=header,
+            command=lambda: update_window(
+                button_status=purchase_details_area.objList[14],
+                changed_rows=changed_rows,
+                root_x_y=root_x_y,
             )
         )
 
@@ -603,3 +695,7 @@ def purchers_area_ingredients(
             purchase_details_area.objList[15],
             cal_unit_prices(purchase_details_from_db),
         )
+        purchase_details_window.frame.update_idletasks()
+        x = (root_x_y[0] // 2) - (purchase_details_area.frame.winfo_width() // 2)
+        y = (root_x_y[1] // 2) - (purchase_details_area.frame.winfo_height() // 2)
+        purchase_details_window.frame.geometry(f"+{x}+{y}")

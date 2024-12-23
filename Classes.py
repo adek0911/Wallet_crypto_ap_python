@@ -22,6 +22,21 @@ class AreaFrame:
         self.frame = ttk.Frame(onFrame, width=self.width, height=self.height)
         self.frame.grid(**kwargs)
 
+    # @property
+    # def objList(self):
+    #     """GET"""
+    #     return self._objList
+
+    # @objList.setter
+    # def objList(self, obj: object):
+    #     """APPEND"""
+    #     self.objList = self.objList.append(obj)
+
+    # @objList.deleter
+    # def objList(self, index: int):
+    #     """DELETE"""
+    #     self.objList = self.objList.pop(index)
+
     def __str__(self) -> str:
         return "Aktualnie jesteś w ramce głownej"
 
@@ -209,6 +224,17 @@ class AreaFrame:
         entry["state"] = state
         entry.grid(row=row, column=column, padx=5, pady=5, **kwargs)
         self.objList.append(entry)
+
+    def statusbar_display(
+        self, row: int, column: int, maximum: int = 10, columnspan: int = 0
+    ):
+
+        statusbar = ttk.Progressbar(
+            self.frame, style="primary", mode="determinate", maximum=maximum
+        )
+        statusbar.grid(row=row, column=column, columnspan=columnspan)
+
+        self.objList.append(statusbar)
 
 
 class TopFrame(AreaFrame):
