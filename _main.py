@@ -528,6 +528,7 @@ def buttons_area_ingredients(
             url=variable_json_File.file_dict["variable_json"]["URL_Credentials"],
             session_user=session_user,
             header=variable_json_File.file_dict["variable_json"]["Authorization_token"],
+            root_x_y=[root.winfo_screenwidth(), root.winfo_screenheight()],
         ),
     )
 
